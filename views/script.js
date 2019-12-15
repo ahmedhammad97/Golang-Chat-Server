@@ -56,5 +56,6 @@ $('#create').on('click', ()=>{
   
   function startChat(code, nickname){
     localStorage.setItem("nickname", nickname);
-    window.location.replace(`${window.location.href}room/${code}`);
+    localStorage.setItem("code", code);
+    window.location.replace(`${window.location.href}chat.html`);
   }

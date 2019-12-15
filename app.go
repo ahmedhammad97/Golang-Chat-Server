@@ -11,8 +11,8 @@ import (
 )
 
 var flake = sonyflake.NewSonyflake(sonyflake.Settings{})
-var roomidSet map[uint64]bool
-var nicknameSet map[uint64][]string
+var roomidSet = make(map[uint64]bool)
+var nicknameSet = make(map[uint64][]string)
 
 func main() {
 	// Http Handlers
@@ -48,6 +48,7 @@ func CreateRoom(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Fatalf("flake.NextID() failed with %s\n", err)
 	}
+
 	roomidSet[id] = true
 
 	names, ok := nicknameSet[id]
