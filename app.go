@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	socketio "github.com/googollee/go-socket.io"
 	"github.com/sony/sonyflake"
 )
 
@@ -15,22 +16,37 @@ var roomidSet = make(map[uint64]bool)
 var nicknameSet = make(map[uint64][]string)
 
 func main() {
+	// Socket Handlers
+	server, err := socketio.NewServer(nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	server.OnConnect("/", SocketConnect)
+	server.OnEvent("/", "initialConnection", InitConn)
+	server.OnEvent("/", "chatMessage", ChatMessage)
+	server.OnEvent("/", "typing", Typing)
+
+	server.OnError("/", func(s socketio.Conn, e error) {
+		fmt.Println("meet error:", e)
+	})
+
+	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
+		fmt.Println("closed", reason)
+	})
+
+	go server.Serve()
+	defer server.Close()
+
 	// Http Handlers
 	http.Handle("/", http.FileServer(http.Dir("views")))
+	http.Handle("/socket", server)
 
 	http.HandleFunc("/create", CreateRoom)
 	http.HandleFunc("/join", JoinRoom)
 
 	fmt.Println("Listening to port 9797...")
 	http.ListenAndServe(":9797", nil)
-
-	// Socekt Handlers
-	// server, err := socketio.NewServer(nil)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// server.OnConnect("/", SocketConnect)
 }
 
 /*##################### Handlers #####################*/
@@ -86,6 +102,27 @@ func JoinRoom(res http.ResponseWriter, req *http.Request) {
 	} else {
 		fmt.Fprintf(res, "Not available")
 	}
+}
+
+/*SocketConnect handles first socket connection*/
+func SocketConnect(so socketio.Conn) error {
+	so.Emit("initialConnection")
+	return nil
+}
+
+/*InitConn allow socket to join a room*/
+func InitConn(so socketio.Conn, msg string) {
+	so.Join(msg)
+}
+
+/*ChatMessage broadcasts message to other users*/
+func ChatMessage(so socketio.Conn, msg string) {
+	so.Emit("chatMessage", msg)
+}
+
+/*Typing notify other users that this user is typing*/
+func Typing(so socketio.Conn, msg string) {
+	so.Emit("typing", msg)
 }
 
 /*##################### Helper #####################*/

@@ -17,19 +17,17 @@ const roomCode = $('#roomCode').text();
 var address = window.location.protocol + "//"
 address += window.location.hostname + ":";
 address += window.location.port
+address += "/socket"
 const socket = io.connect(address);
 
 //Joining the room
 socket.on('initialConnection', data=>{
-  socket.emit('initialConnection', {
-    'nickname' : nickname,
-    'roomCode' : roomCode
-  })
+  socket.emit('initialConnection', roomCode)
 });
 
 //Recieving a message
 socket.on('chatMessage', data=>{
-  $("#chatBox").append('<br><p><strong>' + data.nickname + ': </strong>'+ decrypt(data.message, roomCode) +'</p>');
+  $("#chatBox").append('<br><p><strong>' + data.nickname + ': </strong>'+ data.message +'</p>');
   $('#typing').text('');
 });
 
@@ -43,7 +41,7 @@ function send(){
   socket.emit('chatMessage', {
     'nickname' : nickname,
     'room' : roomCode,
-    'message' : encrypt($('#messageBox').val(), roomCode)
+    'message' :$('#messageBox').val()
   });
   $('#messageBox').val("");
 }
