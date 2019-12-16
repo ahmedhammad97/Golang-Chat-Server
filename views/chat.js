@@ -14,20 +14,18 @@ $('#chatBox').css('height', totalHeight - 200);
 const nickname = $('#nickname').text();
 const roomCode = $('#roomCode').text();
 
-var address = window.location.protocol + "//"
-address += window.location.hostname + ":";
-address += window.location.port
-address += "/socket"
-const socket = io.connect(address);
+const socket = io.connect("http://localhost:9797");
 
 //Joining the room
 socket.on('initialConnection', data=>{
+  console.log("Connected!");
   socket.emit('initialConnection', roomCode)
 });
 
 //Recieving a message
 socket.on('chatMessage', data=>{
-  $("#chatBox").append('<br><p><strong>' + data.nickname + ': </strong>'+ data.message +'</p>');
+  let info = data.split("$");
+  $("#chatBox").append('<br><p><strong>' + info[0] + ': </strong>'+ info[2] +'</p>');
   $('#typing').text('');
 });
 
@@ -38,26 +36,20 @@ $('#messageBox').keypress(e=>{ if(e.which == 13) {send()}});
 
 //Sending message function
 function send(){
-  socket.emit('chatMessage', {
-    'nickname' : nickname,
-    'room' : roomCode,
-    'message' :$('#messageBox').val()
-  });
+  socket.emit('chatMessage', nickname + "$" + roomCode + "$" + $('#messageBox').val());
   $('#messageBox').val("");
 }
 
 
 //Tracking typing
 $('#messageBox').keypress(e=>{
-    socket.emit('typing', {
-      'nickname' : nickname,
-      'room' : roomCode
-    });
+    socket.emit('typing', nickname + "$" + roomCode);
 });
 
 //Someone else is typing
 socket.on('typing', data=>{
-  $('#typing').text(data.nickname + ' is typing...');
+  let info = data.split("$");
+  $('#typing').text(info[0] + ' is typing...');
   setTimeout(()=>{
     $('#typing').text('');
   },5000);

@@ -6,7 +6,13 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
+	/*
+		Note that go-socket.io package is not maintaned any more by the author.
+		The master branch is not supported, and I had a lot of troubles using it.
+		So instead, I downgraded to the branch v1.0
+	*/
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/sony/sonyflake"
 )
@@ -22,25 +28,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server.OnConnect("/", SocketConnect)
-	server.OnEvent("/", "initialConnection", InitConn)
-	server.OnEvent("/", "chatMessage", ChatMessage)
-	server.OnEvent("/", "typing", Typing)
+	server.On("connection", SocketConnect)
 
-	server.OnError("/", func(s socketio.Conn, e error) {
-		fmt.Println("meet error:", e)
+	server.On("error", func(so socketio.Socket, err error) {
+		log.Println("error:", err)
 	})
-
-	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
-		fmt.Println("closed", reason)
-	})
-
-	go server.Serve()
-	defer server.Close()
 
 	// Http Handlers
 	http.Handle("/", http.FileServer(http.Dir("views")))
-	http.Handle("/socket", server)
+	http.Handle("/socket.io/", server)
 
 	http.HandleFunc("/create", CreateRoom)
 	http.HandleFunc("/join", JoinRoom)
@@ -105,24 +101,30 @@ func JoinRoom(res http.ResponseWriter, req *http.Request) {
 }
 
 /*SocketConnect handles first socket connection*/
-func SocketConnect(so socketio.Conn) error {
-	so.Emit("initialConnection")
-	return nil
+func SocketConnect(so socketio.Socket) {
+	so.Emit("initialConnection", "nil")
+
+	so.On("initialConnection", InitConn)
+	so.On("chatMessage", ChatMessage)
+	so.On("Typing", Typing)
 }
 
 /*InitConn allow socket to join a room*/
-func InitConn(so socketio.Conn, msg string) {
+func InitConn(so socketio.Socket, msg string) {
 	so.Join(msg)
 }
 
 /*ChatMessage broadcasts message to other users*/
-func ChatMessage(so socketio.Conn, msg string) {
+func ChatMessage(so socketio.Socket, msg string) {
+	data := strings.Split(msg, "$")
 	so.Emit("chatMessage", msg)
+	so.BroadcastTo(data[1], "chatMessage", msg)
 }
 
 /*Typing notify other users that this user is typing*/
-func Typing(so socketio.Conn, msg string) {
-	so.Emit("typing", msg)
+func Typing(so socketio.Socket, msg string) {
+	data := strings.Split(msg, "$")
+	so.BroadcastTo(data[1], "typing", msg)
 }
 
 /*##################### Helper #####################*/
