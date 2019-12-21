@@ -14,7 +14,7 @@ $('#chatBox').css('height', totalHeight - 200);
 const nickname = $('#nickname').text();
 const roomCode = $('#roomCode').text();
 
-const socket = io.connect("http://localhost:9797");
+const socket = io.connect(window.Location.href);
 
 //Joining the room
 socket.on('initialConnection', data=>{
